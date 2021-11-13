@@ -3,6 +3,7 @@ package simpledb.common;
 import simpledb.common.Type;
 import simpledb.storage.DbFile;
 import simpledb.storage.HeapFile;
+import simpledb.storage.Page;
 import simpledb.storage.TupleDesc;
 
 import java.io.BufferedReader;
@@ -23,6 +24,20 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Catalog {
 
+    public static class Table {
+        public DbFile file;
+        public String name;
+        public String primaryField;
+
+        public Table(DbFile file, String name, String primaryField) {
+            this.file = file;
+            this.name = name;
+            this.primaryField = primaryField;
+        }
+    }
+
+    private HashMap<String, Table> tables = new HashMap<>();
+
     /**
      * Constructor.
      * Creates a new, empty catalog.
@@ -41,7 +56,13 @@ public class Catalog {
      * @param pkeyField the name of the primary key field
      */
     public void addTable(DbFile file, String name, String pkeyField) {
-        // some code goes here
+        for (Map.Entry<String, Table> kv : tables.entrySet()) {
+            if (kv.getValue().file.getId() == file.getId()) {
+                tables.remove(kv.getKey());
+                break;
+            }
+        }
+        tables.put(name, new Table(file, name, pkeyField));
     }
 
     public void addTable(DbFile file, String name) {
@@ -64,8 +85,12 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public int getTableId(String name) throws NoSuchElementException {
-        // some code goes here
-        return 0;
+        for (Map.Entry<String, Table> kv : tables.entrySet()) {
+            if (kv.getKey().equalsIgnoreCase(name)) {
+                return kv.getValue().file.getId();
+            }
+        }
+        throw new NoSuchElementException();
     }
 
     /**
@@ -75,8 +100,12 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        for (Map.Entry<String, Table> kv : tables.entrySet()) {
+            if (kv.getValue().file.getId() == tableid) {
+                return kv.getValue().file.getTupleDesc();
+            }
+        }
+        throw new NoSuchElementException();
     }
 
     /**
@@ -86,28 +115,50 @@ public class Catalog {
      *     function passed to addTable
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        for (Map.Entry<String, Table> kv : tables.entrySet()) {
+            if (kv.getValue().file.getId() == tableid) {
+                return kv.getValue().file;
+            }
+        }
+        throw new NoSuchElementException();
     }
 
     public String getPrimaryKey(int tableid) {
-        // some code goes here
-        return null;
+        for (Map.Entry<String, Table> kv : tables.entrySet()) {
+            if (kv.getValue().file.getId() == tableid) {
+                return kv.getValue().primaryField;
+            }
+        }
+        throw new NoSuchElementException();
     }
 
     public Iterator<Integer> tableIdIterator() {
-        // some code goes here
-        return null;
+        Iterator<Map.Entry<String, Table>> tableIt = tables.entrySet().iterator();
+        return new Iterator<Integer>() {
+            @Override
+            public boolean hasNext() {
+                return tableIt.hasNext();
+            }
+
+            @Override
+            public Integer next() {
+                return tableIt.next().getValue().file.getId();
+            }
+        };
     }
 
-    public String getTableName(int id) {
-        // some code goes here
-        return null;
+    public String getTableName(int tableid) {
+        for (Map.Entry<String, Table> kv : tables.entrySet()) {
+            if (kv.getValue().file.getId() == tableid) {
+                return kv.getValue().name;
+            }
+        }
+        throw new NoSuchElementException();
     }
     
     /** Delete all tables from the catalog */
     public void clear() {
-        // some code goes here
+        tables.clear();
     }
     
     /**
