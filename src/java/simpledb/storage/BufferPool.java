@@ -1,15 +1,19 @@
 package simpledb.storage;
 
-import simpledb.common.Database;
 import simpledb.common.Permissions;
 import simpledb.common.DbException;
-import simpledb.common.DeadlockException;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
+import sun.awt.Mutex;
 
 import java.io.*;
 
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -33,13 +37,15 @@ public class BufferPool {
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
 
+    private int maxNumPages;
+
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
      * @param numPages maximum number of pages in this buffer pool.
      */
     public BufferPool(int numPages) {
-        // some code goes here
+        this.maxNumPages = numPages;
     }
     
     public static int getPageSize() {
@@ -56,6 +62,28 @@ public class BufferPool {
     	BufferPool.pageSize = DEFAULT_PAGE_SIZE;
     }
 
+    private static class PageUsageInfo {
+        public TransactionId tid;
+        public Permissions perm;
+        public Mutex mutex = new Mutex();
+
+        public PageUsageInfo() { }
+
+        public void Lock(TransactionId tid, Permissions perm) {
+            this.tid = tid;
+            this.perm = perm;
+            mutex.lock();
+        }
+
+        public void Unlock() {
+            this.tid = null;
+            this.perm = null;
+            mutex.unlock();
+        }
+    }
+
+    private ConcurrentHashMap<PageId, PageUsageInfo> pages;
+
     /**
      * Retrieve the specified page with the associated permissions.
      * Will acquire a lock and may block if that lock is held by another
@@ -71,9 +99,18 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
-        // some code goes here
+        // 如果不存在, 创建PageUsageInfo, 这里要加锁, 因为可能出现并发问题
+        // A、B线程同时执行, 发现没有key, 然后一起put, 会导致两个事务同时获取到page
+        synchronized (this) {
+            if (!pages.containsKey(pid)) {
+                pages.put(pid, new PageUsageInfo());
+            }
+        }
+
+        PageUsageInfo info = pages.get(pid);
+        info.Lock(tid, perm);
         return null;
     }
 

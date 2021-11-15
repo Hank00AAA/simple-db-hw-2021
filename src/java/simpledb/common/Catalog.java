@@ -42,9 +42,7 @@ public class Catalog {
      * Constructor.
      * Creates a new, empty catalog.
      */
-    public Catalog() {
-        // some code goes here
-    }
+    public Catalog() {}
 
     /**
      * Add a new table to the catalog.

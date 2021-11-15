@@ -31,8 +31,7 @@ public class RecordId implements Serializable {
      * @return the tuple number this RecordId references.
      */
     public int getTupleNumber() {
-        // some code goes here
-        return 0;
+        return this.tupleNO;
     }
 
     /**
@@ -52,7 +51,11 @@ public class RecordId implements Serializable {
     public boolean equals(Object o) {
         try {
             RecordId r = (RecordId)o;
-            return this.tupleNO == r.tupleNO;
+            if (this.tupleNO != r.tupleNO) {
+                return false;
+            }
+
+            return this.pageID.equals(r.pageID);
         } catch (Exception e) {
             return false;
         }
@@ -66,9 +69,16 @@ public class RecordId implements Serializable {
      */
     @Override
     public int hashCode() {
-        // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        return (int) (this.pageID.hashCode() * Math.pow(10, count(this.tupleNO + 1)) + this.tupleNO);
+    }
 
+    private int count(int a) {
+        int c = 0;
+        while (a > 0) {
+            a /= 10;
+            c++;
+        }
+        return c;
     }
 
 }
