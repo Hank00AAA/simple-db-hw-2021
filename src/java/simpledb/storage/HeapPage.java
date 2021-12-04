@@ -71,21 +71,18 @@ public class HeapPage implements Page {
     /** Retrieve the number of tuples on this page.
         @return the number of tuples on this page
     */
-    private int getNumTuples() {        
-        // some code goes here
-        return 0;
-
+    private int getNumTuples() {
+        int bitsPerPage = BufferPool.getPageSize() * 8;
+        int bitsPerTupleInPage = td.getSize() * 8 + 1;
+        return (int) Math.floor(bitsPerPage / bitsPerTupleInPage);
     }
 
     /**
      * Computes the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
-    private int getHeaderSize() {        
-        
-        // some code goes here
-        return 0;
-                 
+    private int getHeaderSize() {
+        return (int) Math.ceil(numSlots / 8);
     }
     
     /** Return a view of this page before it was modified
@@ -117,8 +114,7 @@ public class HeapPage implements Page {
      * @return the PageId associated with this page.
      */
     public HeapPageId getId() {
-    // some code goes here
-    throw new UnsupportedOperationException("implement this");
+        return pid;
     }
 
     /**
@@ -287,16 +283,32 @@ public class HeapPage implements Page {
      * Returns the number of empty slots on this page.
      */
     public int getNumEmptySlots() {
-        // some code goes here
-        return 0;
+        int emptyNum = 0;
+        for (int i = 0; i < numSlots; i++) {
+            if (!getHeaderVal(i)) {
+                emptyNum += 1;
+            }
+        }
+        return emptyNum;
     }
 
     /**
      * Returns true if associated slot on this page is filled.
      */
     public boolean isSlotUsed(int i) {
-        // some code goes here
+        try {
+            return getHeaderVal(i);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return false;
+    }
+
+    private boolean getHeaderVal(int i) {
+        int idx = i / 8;
+        int pos = i % 8;
+        int b = (int) ((header[idx] >> pos) & (1));
+        return b == 1;
     }
 
     /**
@@ -312,8 +324,27 @@ public class HeapPage implements Page {
      * (note that this iterator shouldn't return tuples in empty slots!)
      */
     public Iterator<Tuple> iterator() {
-        // some code goes here
-        return null;
+        return new Iterator<Tuple>() {
+            int i = 0;
+            @Override
+            public boolean hasNext() {
+                while (i < tuples.length) {
+                    if (isSlotUsed(i)) {
+                        return true;
+                    }
+                    i++;
+                }
+
+                return false;
+            }
+
+            @Override
+            public Tuple next() {
+                Tuple res = tuples[i];
+                i += 1;
+                return res;
+            }
+        };
     }
 
 }
